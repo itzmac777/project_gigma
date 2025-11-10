@@ -1,0 +1,12 @@
+<div>
+    <input id="room-name-input" type="text" placeholder="Enter name of your room">
+    <button id="enter-room-btn">Enter</button>
+</div>
+
+<script>
+    const roomNameInput = document.getElementById("room-name-input")
+    document.getElementById("enter-room-btn").addEventListener('click', e=> {
+        if(roomNameInput.value.trim() == '') alert("Enter a valid name");
+        window.location.href = `/board/${roomNameInput.value.trim()}`
+    })
+</script>

@@ -1,0 +1,240 @@
+<div class="flex">
+    <div class="flex bottom-5 rounded left-[35vw] bg-white bottom-0 absolute gap-3 flex-1 p-3">
+        <div class="border">move</div>
+        <div class="border">rect</div>
+        <div class="border">frame</div>
+        <div class="border">text</div>
+    </div>
+    <div class="bg-gray-300 flex flex-5 min-h-[100vh] overflow-hidden">
+        <canvas data-state="move" id="canvas"></canvas>
+    </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const canvas = document.getElementById('canvas');
+
+    const ctx = canvas.getContext("2d")
+
+    const width = window.innerWidth
+    const height = window.innerHeight;
+    canvas.style.width = width + "px"
+    canvas.style.height = height + "px"
+
+    const scale = window.devicePixelRatio
+    canvas.width = width * scale
+    canvas.height = height * scale
+    ctx.scale(scale, scale)
+    const rect = canvas.getBoundingClientRect()
+
+
+    let rectData = [{
+        x: 10,
+        y: 10,
+        width: 40,
+        height: 20
+    }, {
+        x: 100,
+        y: 50,
+        width: 40,
+        height: 20
+    }, {
+        x: 300,
+        y: 200,
+        width: 40,
+        height: 20
+    },
+    ]
+
+    let currRect = {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0
+    }
+
+    let moveElem = false;
+    let selectedRect = -1;
+    let clickedCorner = [false, false, false, false]
+    drawCanvasData()
+
+    
+
+
+    document.addEventListener("keydown", e=> {
+        if(e.code === 'KeyR'){
+            canvas.dataset.state = 'rect'
+        }
+        if(e.code === 'KeyM'){
+            canvas.dataset.state = 'move'
+        }
+        if(e.code === 'Delete'){
+            if(selectedRect != -1){
+                rectData.splice(selectedRect, 1)
+                selectedRect = -1;
+                drawCanvasData()
+            }
+        }
+    })
+
+    document.addEventListener("mousedown", e=> {
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top;
+        clickedCorner = isClickedCornerOfRect(x, y, rectData[selectedRect])
+        if(canvas.dataset.state == "rect"){
+            drawCanvasData()
+            currRect = {
+                x: x,
+                y: y,
+                width: 0,
+                height: 0
+            }
+            document.addEventListener("mousemove", createRect)
+        }
+        if(selectedRect != -1 && isClickedInsideRect(x, y, rectData[selectedRect]) && canvas.dataset.state == 'move' && !clickedCorner.some(val => val == true)){
+            moveElem = true;
+            currRect = rectData[selectedRect];
+            document.addEventListener("mousemove", moveRect)
+        }
+        if(canvas.dataset.state !== "rect" && selectedRect != -1 && clickedCorner.some(val => val == true)){
+            document.addEventListener("mousemove", scaleRect)
+        }
+    })
+
+    canvas.addEventListener("click", selectRect)
+
+
+    document.addEventListener("mouseup", e=> {
+        if(canvas.dataset.state == "rect"){
+            document.removeEventListener("mousemove", createRect)
+            rectData.push(currRect)
+        }
+        document.removeEventListener("mousemove", moveRect)
+        document.removeEventListener('mousemove', scaleRect)
+        clickedCorner = [false, false, false, false]
+        selectRect = -1
+        moveElem = false
+    })
+
+
+    function scaleRect(e){
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const currRect = rectData[selectedRect];
+        const minHeightWidth = 20;
+        drawCanvasData()
+        //top-left
+        if(clickedCorner[0] && clickedCorner[3]){
+            if(currRect.width + (currRect.x - x) >= minHeightWidth){
+                currRect.width += currRect.x - x
+                currRect.x = x;
+            }
+            if(currRect.height + (currRect.y - y) >= minHeightWidth){
+                currRect.height += currRect.y - y
+                currRect.y = y
+            }
+        }
+        //top-right
+        if(clickedCorner[0] && clickedCorner[1]){
+            if(x - currRect.x >= minHeightWidth){
+                currRect.width = x - currRect.x;
+            }
+            if(currRect.height + (currRect.y - y) >= minHeightWidth){
+                currRect.height += currRect.y - y
+                currRect.y = y
+            }
+        }
+        //bottom-right
+        if(clickedCorner[2] && clickedCorner[1]){
+            if(x - currRect.x >= minHeightWidth){
+                currRect.width = x - currRect.x
+            }
+            if(y - currRect.y >= minHeightWidth){
+                currRect.height = y - currRect.y
+            }
+        }
+        // bottom-left
+        if(clickedCorner[2] && clickedCorner[3]){
+            if(currRect.width + (currRect.x - x) >= minHeightWidth){
+                currRect.width += currRect.x - x
+                currRect.x = x
+            }
+            if(y - currRect.y >= minHeightWidth){
+                currRect.height = y - currRect.y;
+            }
+        }
+    }
+
+    function isClickedCornerOfRect(x, y, rect){
+        const radiusOfClick = 0.1;
+        if(!rect) return;
+        //Clockwise from top (ex. top-left -> top-right)
+        if(x >= rect.x && x <= rect.x + rect.width * radiusOfClick && y >= rect.y && y <= rect.y + rect.height * radiusOfClick){
+            return [true, false, false, true]   
+        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * radiusOfClick && y >= rect.y && y <= rect.y + rect.height * radiusOfClick){
+            return [true, true, false, false]    
+        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * radiusOfClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * radiusOfClick){
+            return [false, true, true, false]      
+        } else if(x >= rect.x && x <= rect.x + rect.width * radiusOfClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * radiusOfClick){
+            return [false, false, true, true]
+        } else{
+            return [false, false, false, false]
+        }
+    }
+
+    function selectRect(e){
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top
+        drawCanvasData()
+        for(let i = 0; i < rectData.length; i++){
+            if(isClickedInsideRect(x, y, rectData[i])){
+                drawOutline(rectData[i])
+                selectedRect = i;
+                break;
+            } else{
+                selectedRect = -1;
+            }
+        }
+    }
+
+    function isClickedInsideRect(x, y, rect){
+        return (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)
+    }
+
+    function drawOutline(rect){
+        ctx.beginPath()
+        ctx.lineWidth = 1
+        ctx.strokeStyle = 'blue'
+        ctx.rect(rect.x, rect.y, rect.width, rect.height)
+        ctx.stroke()
+    }
+
+    function createRect(e){
+        drawCanvasData()
+        ctx.beginPath()
+        ctx.rect(currRect.x, currRect.y, e.clientX - currRect.x, e.clientY - currRect.y)
+        ctx.lineWidth = 1
+        ctx.strokeStyle = 'gray'
+        ctx.stroke()
+        currRect.width = e.clientX - currRect.x; 
+        currRect.height = e.clientY - currRect.y
+    }
+
+    function moveRect(e){
+        drawCanvasData()
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top;
+        currRect.x = x - currRect.width / 2;
+        currRect.y = y - currRect.height / 2;
+    }
+
+    function drawCanvasData(){
+        ctx.clearRect(0,0, canvas.width, canvas.height)
+        rectData.forEach(rect=> {
+            ctx.beginPath()
+            ctx.rect(rect.x, rect.y, rect.width, rect.height)
+            ctx.lineWidth = 1
+            ctx.strokeStyle = 'black'
+            ctx.stroke()
+        })
+    }
+</script>
