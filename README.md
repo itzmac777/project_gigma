@@ -30,12 +30,12 @@ https://projectgigma-production.up.railway.app/
 - **Custom Engine:** Every interaction (selection, scaling, movement) is manually implemented for full control.
 
 ## Screenshots
-<img width="999" height="430" alt="Screenshot 2025-11-11 105716" src="https://github.com/user-attachments/assets/76066222-7d10-45ad-8c0d-3972d38a0b5d" />
 <img width="1106" height="619" alt="Screenshot 2025-11-11 105500" src="https://github.com/user-attachments/assets/6bceaaf0-245d-4bce-83a2-8e4edf2abb59" />
+<img width="999" height="430" alt="Screenshot 2025-11-11 105716" src="https://github.com/user-attachments/assets/76066222-7d10-45ad-8c0d-3972d38a0b5d" />
 <img width="1315" height="670" alt="Screenshot 2025-11-11 103405" src="https://github.com/user-attachments/assets/1d1d0fb4-e240-472f-b94b-a3013b2c0f76" />
 
 
-## Installation And Setup
+## Installation and Setup
 
 ### Prerequisites
 - Node.js (v14+)
