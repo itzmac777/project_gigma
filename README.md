@@ -5,11 +5,11 @@ A realtime collaborative rectangle based drawing tool that allows you to join an
 turn your blocky imagination into reality
 
 ## 📜 Table of Contents
-- [🚀 Live Demo](#-live-demo)
-- [✨ Features](#-features)
-- [🖼️ Screenshots](#-screenshots)
-- [⚙️ Installation & Setup](#️-installation--setup)
-- [🧠 How It Works](#-how-it-works)
+- [Live Demo](#-live-demo)
+- [Features](#-features)
+- [Screenshots](#-screenshots)
+- [Installation & Setup](#️-installation--setup)
+- [How It Works](#-how-it-works)
 - [🧱 Tech Stack](#-tech-stack)
 - [🔥 Challenges I Faced](#-challenges-i-faced)
   - [Negative Height & Width](#-negative-height--width)
