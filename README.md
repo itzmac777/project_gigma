@@ -8,14 +8,14 @@ turn your blocky imagination into reality
 - [Live Demo](#live-demo)
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Installation & Setup](#️installation--setup)
-- [How It Works](#-how-it-works)
-- [🧱 Tech Stack](#-tech-stack)
-- [🔥 Challenges I Faced](#-challenges-i-faced)
-  - [Negative Height & Width](#-negative-height--width)
-  - [Mouse Selection](#-mouse-selection)
+- [Installation & Setup](#️installation-&-setup)
+- [How It Works](#how-it-works)
+- [Tech Stack](#tech-stack)
+- [Challenges I Faced](#challenges-i-faced)
+  - [Negative Height & Width](#negative-height--width)
+  - [Mouse Selection](#mouse-selection)
 - [🎯 Future Goals](#-future-goals)
-- [💡 Why I Built This](#-why-i-built-this)
+- [Why I Built This](#why-i-built-this)
 
 ## Live Demo
 https://projectgigma-production.up.railway.app/
@@ -82,8 +82,8 @@ This approach ensures **deterministic rendering** and enables features like mani
 ## Challenges I Faced
 
 - Handling **canvas transformations** and maintaining correct scaling ratios  
-- Implementing **precise selection boxes** with pixel-perfect mouse detection [how it works](#-mouse-selection) 
-- Negative **Height & Width** problem making that rectangle unselectable  [how it works](#-negative-height-width) 
+- Implementing **precise selection boxes** with pixel-perfect mouse detection [how it works](#mouse-selection) 
+- Negative **Height & Width** problem making that rectangle unselectable  [how it works](#negative-height-width) 
 - Managing **state rendering** without libraries like Fabric.js
 
 ## 🎯 Future Goals
