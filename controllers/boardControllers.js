@@ -1,5 +1,5 @@
 export async function displayBoardPage(req, res) {
-  res.render("layout.ejs", { page: "board" })
+  res.send("Page Not Found")
 }
 
 export async function displaySocketBoardPage(req, res) {

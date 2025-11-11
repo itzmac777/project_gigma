@@ -1,30 +1,48 @@
 <div class="flex">
-    <div class="flex bottom-5 rounded left-[35vw] bg-white bottom-0 absolute gap-3 flex-1 p-3">
-        <div id="move-btn" class="border">move</div>
-        <div id="rect-btn" class="border">rect</div>r
+    <div class="flex bottom-5 rounded left-[5vw] sm:left-[35vw] bottom-0 absolute gap-3 flex-1 p-3">
+        <div id="move-btn" class="border px-3 py-1">Move</div>
+        <div id="rect-btn" class="border px-3 py-1">Rect</div>
+        <div id="delete-btn" class="border px-3 py-1">Delete</div>
     </div>
     <div class="bg-gray-300 flex flex-5 min-h-[100vh] overflow-hidden">
-        <canvas class="bg-white" data-room-name=<%= roomName %> data-state="move" id="canvas"></canvas>
+        <canvas class="bg-white" data-room-name=<%= roomName %> data-state="rect" id="canvas"></canvas>
+    </div>
+    <div class="flex items-center flex-col right-0 rounded absolute gap-3 flex-1 p-3">
+        <div class="flex items-center gap-3"><button data-modal-btn class="border px-2 py-1 flex items-center  gap-3">Room People <div class="border px-3 py-1 bg-indigo-500 text-sm font-medium text-white">v</div></button></div>
+        <ul data-modal class="hidden [&::-webkit-scrollbar]:hidden overflow-auto max-h-[70vh] border px-3 py-1 gap-2 flex flex-col">
+        </ul>
     </div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const moveBtn = document.getElementById("move-btn")
     const rectBtn = document.getElementById("rect-btn")
+    const delBtn = document.getElementById("delete-btn")
     const socket = io()
     const canvas = document.getElementById('canvas');
     const roomName = canvas.dataset.roomName;
+    const modal = document.querySelector('[data-modal]')
+    const modalBtn = document.querySelector('[data-modal-btn]')
 
+
+    modalBtn.addEventListener('click', e=> {
+        modal.classList.toggle('hidden')
+    })
     moveBtn.addEventListener('click', e=> {
         canvas.dataset.state = 'move'
+        refreshActiveToolBtn()
     })
-
-    
     rectBtn.addEventListener('click', e=> {
         canvas.dataset.state = 'rect'
+        refreshActiveToolBtn()
+    })
+    delBtn.addEventListener('click', e=> {
+        canvas.dataset.state = 'delete'
+        refreshActiveToolBtn()
     })
 
-    const ctx = canvas.getContext("2d")
+    //-----------------Canvas-------------------//
+    let ctx = canvas.getContext("2d")
 
     let width = window.innerWidth
     let height = window.innerHeight;
@@ -37,44 +55,39 @@
     ctx.scale(scale, scale)
     let rect = canvas.getBoundingClientRect()
 
-
-    let rectData = [{
-        x: 10,
-        y: 10,
-        width: 40,
-        height: 20
-    }, {
-        x: 100,
-        y: 50,
-        width: 40,
-        height: 20
-    }, {
-        x: 300,
-        y: 200,
-        width: 40,
-        height: 20
-    },
-    ]
-
+    //-----------------Canvas Variables-------------------//
+    let rectData = []
     let currRect = {
         x: 0,
         y: 0,
         width: 0,
         height: 0
     }
-
+    const minHeightWidth = 5;
     let moveElem = false;
     let selectedRect = -1;
     let clickedCorner = [false, false, false, false]
+    let registerAreaOfCornerClick = 0.1
     drawCanvasData()
+    refreshActiveToolBtn()
 
+    //-----------------Socket emits-------------------//    
     socket.emit('join-room', roomName);
     socket.on('room-state', msg=> {
         console.log(msg)
     });
-
-    document.addEventListener("mousemove", e=> {
-        socket.emit('mouse-position', {x: e.clientX, y: e.clientY})
+    socket.on('room-members',members=> {
+        modal.innerHTML = ``
+        members?.forEach(id=> {
+            const li = document.createElement('li')
+            li.textContent = id.slice(-3)
+            li.classList.add('bg-gray-400')
+            li.classList.add('text-white')
+            li.classList.add('px-3')
+            li.classList.add('py-1')
+            li.classList.add('rounded')
+            modal?.insertAdjacentElement('beforeend', li);
+        })
     })
 
     socket.on('rect-data', data=> {
@@ -82,11 +95,11 @@
         drawCanvasData()
     })
     socket.on('broadcasted-mouse-position', data=> {
-        drawMouseOnCanvas(data.cords, data.id)
+        drawMouseOnCanvas(data?.cords, data?.id)
     })
     socket.on('create-rect', data=> {
         ctx.beginPath()
-        ctx.rect(data.x, data.y, data.width, data.height)
+        ctx.rect(data?.x, data?.y, data?.width, data?.height)
         ctx.lineWidth = 1
         ctx.strokeStyle = 'gray'
         ctx.stroke()
@@ -97,15 +110,15 @@
     })
 
     socket.on('move-rect', data=> {
-        rectData[data.index].x = data.x;
-        rectData[data.index].y = data.y
+        rectData[data.index].x = data?.x;
+        rectData[data.index].y = data?.y
     })
 
     socket.on("scale-rect", (data)=> {
-            rectData[data.index].x = data.x;
-            rectData[data.index].y = data.y;
-            rectData[data.index].width = data.width;
-            rectData[data.index].height = data.height;
+            rectData[data.index].x = data?.x;
+            rectData[data.index].y = data?.y;
+            rectData[data.index].width = data?.width;
+            rectData[data.index].height = data?.height;
         }
     )
 
@@ -113,16 +126,22 @@
         rectData.splice(index, 1)
     })
 
+    document.addEventListener("mousemove", e=> {
+        socket.emit('mouse-position', {x: e?.clientX, y: e?.clientY})
+    })
+
     document.addEventListener("keydown", e=> {
         if(e.code === 'KeyR'){
             canvas.dataset.state = 'rect'
+            refreshActiveToolBtn()
         }
         if(e.code === 'KeyM'){
             canvas.dataset.state = 'move'
+            refreshActiveToolBtn()
         }
         if(e.code === 'Delete'){
             if(selectedRect != -1){
-                rectData.splice(selectedRect, 1)
+                rectData?.splice(selectedRect, 1)
                 socket.emit("server-delete-rect", selectedRect)
                 selectedRect = -1;
                 drawCanvasData()
@@ -130,15 +149,26 @@
         }
     })
     window.addEventListener('resize', e=> {
+        ctx = canvas.getContext("2d")
+
+        width = window.innerWidth
+        height = window.innerHeight;
+        canvas.style.width = width + "px"
+        canvas.style.height = height + "px"
+
+        scale = window.devicePixelRatio
+        canvas.width = width * scale
+        canvas.height = height * scale
+        ctx.scale(scale, scale)
+        rect = canvas.getBoundingClientRect()
         drawCanvasData()
     })
 
     document.addEventListener("mousedown", e=> {
-        const x = e.clientX - rect.left
-        const y = e.clientY - rect.top;
+        const x = e.clientX - rect?.left
+        const y = e.clientY - rect?.top;
         clickedCorner = isClickedCornerOfRect(x, y, rectData[selectedRect])
         if(canvas.dataset.state == "rect"){
-            drawCanvasData()
             currRect = {
                 x: x,
                 y: y,
@@ -163,6 +193,9 @@
     document.addEventListener("mouseup", e=> {
         if(canvas.dataset.state == "rect"){
             document.removeEventListener("mousemove", createRect)
+            if(currRect?.width < minHeightWidth || currRect?.height < minHeightWidth){
+                return
+            }
             rectData.push(currRect)
             socket.emit("server-push-rect", currRect)
         }
@@ -174,153 +207,215 @@
     })
     
 
+    function refreshActiveToolBtn(){
+        moveBtn.classList.remove("bg-indigo-500")
+        moveBtn.classList.remove("text-white")
+        delBtn.classList.remove("bg-indigo-500")
+        delBtn.classList.remove("text-white")
+        rectBtn.classList.remove("bg-indigo-500")
+        rectBtn.classList.remove("text-white")
+        document.getElementById(`${canvas.dataset.state}-btn`).classList.add("bg-indigo-500")
+        document.getElementById(`${canvas.dataset.state}-btn`).classList.add("text-white")
+    }
+
 
     function drawMouseOnCanvas(cords, id){
         drawCanvasData()
         ctx.beginPath()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'gray'
-        ctx.rect(cords.x, cords.y, 10, 15)
-        ctx.rect(cords.x + 4, cords.y + 2, 3, 5)
+        ctx.rect(cords?.x, cords?.y, 10, 15)
+        ctx.rect(cords?.x + 4, cords?.y + 2, 3, 5)
         ctx.stroke()
         ctx.font = '10px Arial'
-        ctx.fillText(id.slice(1, 5), cords.x - 2, cords.y - 3)
+        ctx.fillText(id?.slice(-3), cords?.x - 2, cords?.y - 3)
     }
 
     function scaleRect(e){
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = e.clientX - rect?.left;
+        const y = e.clientY - rect?.top;
         const currRect = rectData[selectedRect];
-        const minHeightWidth = 20;
         drawCanvasData()
         //top-left
         if(clickedCorner[0] && clickedCorner[3]){
-            if(currRect.width + (currRect.x - x) >= minHeightWidth){
-                currRect.width += currRect.x - x
+            if(currRect?.width + (currRect?.x - x) >= minHeightWidth){
+                currRect.width += currRect?.x - x
                 currRect.x = x;
             }
-            if(currRect.height + (currRect.y - y) >= minHeightWidth){
-                currRect.height += currRect.y - y
+            if(currRect?.height + (currRect?.y - y) >= minHeightWidth){
+                currRect.height += currRect?.y - y
                 currRect.y = y
             }
         }
         //top-right
         if(clickedCorner[0] && clickedCorner[1]){
-            if(x - currRect.x >= minHeightWidth){
-                currRect.width = x - currRect.x;
+            if(x - currRect?.x >= minHeightWidth){
+                currRect.width = x - currRect?.x;
             }
-            if(currRect.height + (currRect.y - y) >= minHeightWidth){
-                currRect.height += currRect.y - y
+            if(currRect?.height + (currRect?.y - y) >= minHeightWidth){
+                currRect.height += currRect?.y - y
                 currRect.y = y
             }
         }
         //bottom-right
         if(clickedCorner[2] && clickedCorner[1]){
-            if(x - currRect.x >= minHeightWidth){
-                currRect.width = x - currRect.x
+            if(x - currRect?.x >= minHeightWidth){
+                currRect.width = x - currRect?.x
             }
-            if(y - currRect.y >= minHeightWidth){
-                currRect.height = y - currRect.y
+            if(y - currRect?.y >= minHeightWidth){
+                currRect.height = y - currRect?.y
             }
         }
         // bottom-left
         if(clickedCorner[2] && clickedCorner[3]){
-            if(currRect.width + (currRect.x - x) >= minHeightWidth){
-                currRect.width += currRect.x - x
+            if(currRect?.width + (currRect?.x - x) >= minHeightWidth){
+                currRect.width += currRect?.x - x
                 currRect.x = x
             }
-            if(y - currRect.y >= minHeightWidth){
-                currRect.height = y - currRect.y;
+            if(y - currRect?.y >= minHeightWidth){
+                currRect.height = y - currRect?.y;
             }
         }
         socket.emit("server-scale-rect", {
             index: selectedRect,
-            x: currRect.x,
-            y: currRect.y,
-            width: currRect.width,
-            height: currRect.height
+            x: currRect?.x,
+            y: currRect?.y,
+            width: currRect?.width,
+            height: currRect?.height
         })
     }
 
     function isClickedCornerOfRect(x, y, rect){
-        const radiusOfClick = 0.1;
-        if(!rect) return;
+        if(!rect && !rect?.x && !rect?.y && !rect?.width && !rect?.height) return;
         //Clockwise from top (ex. top-left -> top-right)
-        if(x >= rect.x && x <= rect.x + rect.width * radiusOfClick && y >= rect.y && y <= rect.y + rect.height * radiusOfClick){
+        if(x >= rect.x && x <= rect.x + rect.width * registerAreaOfCornerClick && y >= rect.y && y <= rect.y + rect.height * registerAreaOfCornerClick){
             return [true, false, false, true]   
-        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * radiusOfClick && y >= rect.y && y <= rect.y + rect.height * radiusOfClick){
+        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * registerAreaOfCornerClick && y >= rect.y && y <= rect.y + rect.height * registerAreaOfCornerClick){
             return [true, true, false, false]    
-        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * radiusOfClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * radiusOfClick){
+        } else if(x <= rect.x + rect.width && x >= rect.x + rect.width - rect.width * registerAreaOfCornerClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * registerAreaOfCornerClick){
             return [false, true, true, false]      
-        } else if(x >= rect.x && x <= rect.x + rect.width * radiusOfClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * radiusOfClick){
+        } else if(x >= rect.x && x <= rect.x + rect.width * registerAreaOfCornerClick && y <= rect.y + rect.height && y >= rect.y + rect.height - rect.height * registerAreaOfCornerClick){
             return [false, false, true, true]
         } else{
             return [false, false, false, false]
         }
     }
 
+    // function selectRect(e){
+    //     const x = e.clientX - rect.left
+    //     const y = e.clientY - rect.top
+    //     drawCanvasData()
+    //     advanceSelectRect(e)
+    //     for(let i = 0; i < rectData.length; i++){
+    //         if(isClickedInsideRect(x, y, rectData[i])){
+    //             drawOutline(rectData[i])
+    //             selectedRect = i;
+    //             console.log(getDistanceFromClick(e, i))
+    //             break;
+    //         } else{
+    //             selectedRect = -1;
+    //         }
+    //     }
+    // }
+
     function selectRect(e){
-        const x = e.clientX - rect.left
-        const y = e.clientY - rect.top
+        const x = e?.clientX - rect?.left
+        const y = e?.clientY - rect?.top
+        let closestSelection = -1;
+        let closestDistance = 99999999;
         drawCanvasData()
-        for(let i = 0; i < rectData.length; i++){
+        for(let i = 0; i < rectData?.length; i++){
             if(isClickedInsideRect(x, y, rectData[i])){
-                drawOutline(rectData[i])
-                selectedRect = i;
-                break;
+                if(getDistanceFromClick(e, i) < closestDistance){
+                    closestDistance = getDistanceFromClick(e, i)
+                    closestSelection = i;
+                }
             } else{
                 selectedRect = -1;
             }
         }
+        selectedRect = closestSelection;
+        if(selectedRect != -1){
+            drawOutline(rectData[selectedRect])
+        }
+        if(canvas.dataset.state == 'delete' && selectedRect !== -1){
+            console.log(selectedRect)
+            rectData?.splice(selectedRect, 1)
+            socket.emit("server-delete-rect", selectedRect)
+            selectedRect = -1;
+            drawCanvasData()
+        }
+    }
+
+    function getDistanceFromClick(e, i){
+        const distance = []
+        if(!e && !rectData[i] && !rectData[i]?.width && !rectData[i]?.height ){
+            return
+        }
+        distance[0] = Math.sqrt(Math.pow(e.clientX - rectData[i].x, 2) + Math.pow(e.clientY - rectData[i].y, 2))
+        distance[1] = Math.sqrt(Math.pow(e.clientX - (rectData[i].x + rectData[i].width), 2) + Math.pow(e.clientY - rectData[i].y, 2))
+        distance[2] = Math.sqrt(Math.pow(e.clientX - (rectData[i].x + rectData[i].width), 2) + Math.pow(e.clientY - (rectData[i].y + rectData[i].height), 2))
+        distance[3] = Math.sqrt(Math.pow(e.clientX - rectData[i].x, 2) + Math.pow(e.clientY - (rectData[i].y + rectData[i].height), 2))
+        const minDistance = distance?.reduce((acc, dist)=> {
+            if(dist < acc){
+                return dist
+            } else{
+                return acc
+            }
+        }, 999999999)
+        return minDistance
     }
 
     function isClickedInsideRect(x, y, rect){
-        return (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)
+        return (x >= rect?.x && x <= rect?.x + rect?.width && y >= rect?.y && y <= rect?.y + rect?.height)
     }
 
     function drawOutline(rect){
         ctx.beginPath()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'blue'
-        ctx.rect(rect.x, rect.y, rect.width, rect.height)
+        ctx.rect(rect?.x, rect?.y, rect?.width, rect?.height)
         ctx.stroke()
     }
 
     function createRect(e){
         drawCanvasData()
         ctx.beginPath()
-        ctx.rect(currRect.x, currRect.y, e.clientX - currRect.x, e.clientY - currRect.y)
+        ctx.rect(currRect?.x, 
+                currRect?.y, 
+                (e.clientX - currRect?.x <= minHeightWidth) ? minHeightWidth : e.clientX - currRect?.x, 
+                (e.clientY - currRect?.y <= minHeightWidth) ? minHeightWidth : e.clientY - currRect?.y)
         ctx.lineWidth = 1
         ctx.strokeStyle = 'gray'
         ctx.stroke()
         socket.emit("server-create-rect", {
-            x: currRect.x,
-            y: currRect.y,
-            width: e.clientX - currRect.x,
-            height: e.clientY - currRect.y
+            x: currRect?.x,
+            y: currRect?.y,
+            width: (e.clientX - currRect?.x <= minHeightWidth) ? minHeightWidth : e.clientX - currRect?.x,
+            height: (e.clientY - currRect?.y <= minHeightWidth) ? minHeightWidth : e.clientY - currRect?.y
         })
-        currRect.width = e.clientX - currRect.x; 
-        currRect.height = e.clientY - currRect.y
+        currRect.width = (e.clientX - currRect?.x <= minHeightWidth) ? minHeightWidth : e.clientX - currRect?.x; 
+        currRect.height = (e.clientY - currRect?.y <= minHeightWidth) ? minHeightWidth : e.clientY - currRect?.y
     }
 
     function moveRect(e){
         drawCanvasData()
-        const x = e.clientX - rect.left
-        const y = e.clientY - rect.top;
-        currRect.x = x - currRect.width / 2;
-        currRect.y = y - currRect.height / 2;
+        const x = e.clientX - rect?.left
+        const y = e.clientY - rect?.top;
+        currRect.x = x - currRect?.width / 2;
+        currRect.y = y - currRect?.height / 2;
         socket.emit("server-move-rect", {
             index: selectedRect,
-            x: x - currRect.width / 2,
-            y: y - currRect.height / 2
+            x: x - currRect?.width / 2,
+            y: y - currRect?.height / 2
         })
     }
 
     function drawCanvasData(){
-        ctx.clearRect(0,0, canvas.width, canvas.height)
+        ctx.clearRect(0,0, canvas?.width, canvas?.height)
         rectData.forEach(rect=> {
             ctx.beginPath()
-            ctx.rect(rect.x, rect.y, rect.width, rect.height)
+            ctx.rect(rect?.x, rect?.y, rect?.width, rect?.height)
             ctx.lineWidth = 1
             ctx.strokeStyle = 'black'
             ctx.stroke()
